@@ -29,7 +29,6 @@ struct EncodableCWNetwork: Encodable {
         try container.encode(network.rssiValue, forKey: .rssiValue)
         try container.encode(network.noiseMeasurement, forKey: .noiseMeasurement)
         try container.encode(network.wlanChannel?.channelNumber, forKey: .channelNumber)
-    
         try container.encode(network.wlanChannel?.channelBand.rawValue, forKey: .channelBand)
         
         let securityTypes = [
@@ -50,6 +49,7 @@ struct EncodableCWNetwork: Encodable {
         
         try container.encode(securityTypes, forKey: .securityType)
         try container.encode(network.ibss, forKey: .isIBSS)
+
         try container.encode(network.countryCode, forKey: .countryCode)
     }
 }
@@ -97,10 +97,28 @@ struct WifiItem {
             // Add non-JSON output format
             var output = ""
             results.forEach({
-                output += "SSID: \($0.ssid ?? "Unknown"), "
-                output += "BSSID: \($0.bssid ?? "Unknown"), "
-                output += "RSSI: \($0.rssiValue) dBm, "
-                output += "Channel: \($0.wlanChannel?.channelNumber ?? 0)\n"
+                output += "\nSSID:           \($0.ssid ?? "Unknown") \n"
+                output += "BSSID:          \($0.bssid ?? "Unknown") \n"
+                output += "RSSI:           \($0.rssiValue) dBm \n"
+
+                output += "Channel:        "
+                if let channelNumber = $0.wlanChannel?.channelNumber {
+                    output += "\(channelNumber)\n"
+                } else {
+                    output += "Unknown\n"
+                }
+                
+                output += "Band:           "
+                if let band = $0.wlanChannel?.channelBand {
+                    output += "\(band.rawValue)\n"
+                } else {
+                    output += "Unknown\n"
+                }
+                
+                output += "Noise:          \($0.noiseMeasurement) dBm\n"
+                output += "isIBSS:         \($0.ibss)\n"
+                output += "countryCode:    \($0.countryCode?.description ?? "Unknown")\n"
+                
             })
             return output
         }
