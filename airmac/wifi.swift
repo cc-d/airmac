@@ -115,7 +115,7 @@ struct WifiItem {
                     output += "Unknown\n"
                 }
                 
-                output += "Noise:          \($0.noiseMeasurement) dBm\n"
+                output += "Noise:          \($0.noiseMeasurement) dB\n"
                 output += "isIBSS:         \($0.ibss)\n"
                 output += "countryCode:    \($0.countryCode?.description ?? "Unknown")\n"
                 
