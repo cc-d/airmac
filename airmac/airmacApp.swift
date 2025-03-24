@@ -25,7 +25,6 @@ struct AirMacTool {
         
         let results = wifi.getScanResults(asJSON: useJSON)
         print(results)
-        
     
     
     }
