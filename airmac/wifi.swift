@@ -1,7 +1,7 @@
 import Foundation
 import CoreWLAN
 
-class EncodableCWNetwork: CWNetwork, Encodable {
+class EncodableCWNetwork: Encodable {
     enum CodingKeys: String, CodingKey {
         case ssid, bssid, rssiValue, noiseMeasurement
         case channelNumber, channelWidth, channelBand
@@ -9,21 +9,30 @@ class EncodableCWNetwork: CWNetwork, Encodable {
     }
     
     let securityTypes: [Int: String]
+    let ssid: String?
+    let bssid: String?
+    let rssiValue: Int
+    let noiseMeasurement: Int
+    let channelNumber: Int?
+    let channelBand: Int?
+    let isIBSS: Bool
+    let countryCode: String?
 
+    
     init(network: CWNetwork) {
+        
         securityTypes = securityTypeMap
             .filter { network.supportsSecurity(CWSecurity(rawValue: $0.key)!) }
             .mapValues { $0 }
         
-        super.init()
-        
-        let mirror = Mirror(reflecting: network)
-        for child in mirror.children {
-            if let key = child.label {
-                setValue(child.value, forKey: key)
-            }
-        }
-        
+        self.ssid = network.ssid
+        self.bssid = network.bssid
+        self.rssiValue = network.rssiValue
+        self.noiseMeasurement = network.noiseMeasurement
+        self.channelNumber = network.wlanChannel?.channelNumber
+        self.channelBand = network.wlanChannel?.channelBand.rawValue
+        self.isIBSS = network.ibss
+        self.countryCode = network.countryCode
 
     }
     
@@ -51,10 +60,10 @@ class EncodableCWNetwork: CWNetwork, Encodable {
         try container.encode(bssid, forKey: .bssid)
         try container.encode(rssiValue, forKey: .rssiValue)
         try container.encode(noiseMeasurement, forKey: .noiseMeasurement)
-        try container.encode(wlanChannel?.channelNumber, forKey: .channelNumber)
-        try container.encode(wlanChannel?.channelBand.rawValue, forKey: .channelBand)
+        try container.encode(channelNumber, forKey: .channelNumber)
+        try container.encode(channelBand, forKey: .channelBand)
         try container.encode(securityTypes, forKey: .securityTypes)
-        try container.encode(ibss, forKey: .isIBSS)
+        try container.encode(isIBSS, forKey: .isIBSS)
         try container.encode(countryCode, forKey: .countryCode)
     }
 }
@@ -83,12 +92,7 @@ struct WifiProvider {
                 output += "BSSID:          \(network.bssid ?? "Unknown") \n"
                 output += "RSSI:           \(network.rssiValue) dBm \n"
 
-                output += "Channel:        "
-                if let channelNumber = network.wlanChannel?.channelNumber {
-                    output += "\(channelNumber)\n"
-                } else {
-                    output += "Unknown\n"
-                }
+                output += "Channel:        \(network.channelNumber ?? -1) \n"
                 
                 output += "Security:       "
                 var securityTypeOut: [String] = Array()
@@ -98,15 +102,10 @@ struct WifiProvider {
                 }
                 output += securityTypeOut.joined(separator: ", ") + "\n"
                 
-                output += "Band:           "
-                if let band = network.wlanChannel?.channelBand {
-                    output += "\(band.rawValue)\n"
-                } else {
-                    output += "Unknown\n"
-                }
+                output += "Band:           \(network.channelBand ?? -1)\n"
                 
                 output += "Noise:          \(network.noiseMeasurement) dB\n"
-                output += "isIBSS:         \(network.ibss)\n"
+                output += "isIBSS:         \(network.isIBSS)\n"
                 output += "countryCode:    \(network.countryCode?.description ?? "Unknown")\n"
             }
             return output
@@ -123,9 +122,9 @@ struct WifiProvider {
         }
         do {
             let networks = try iface.scanForNetworks(withName: nil, includeHidden: true)
-            return networks.map{
-                EncodableCWNetwork.init(network: $0)
-            }.sorted {
+            return networks.map(
+                EncodableCWNetwork.init
+            ).sorted {
                 ($0.ssid ?? "") < ($1.ssid ?? "")
             }
         } catch {
