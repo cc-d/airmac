@@ -77,7 +77,7 @@ struct WifiProvider {
         if asJSON {
             do {
                 let encoder = JSONEncoder()
-                encoder.outputFormatting = [.prettyPrinted]
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
                 let jsonResults = try encoder.encode(results)
                 return String(data: jsonResults, encoding: .utf8) ?? ""
             } catch {
