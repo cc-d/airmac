@@ -1,9 +1,37 @@
 import Foundation
 import CoreWLAN
 
-// Create a general utility function for security types
-func getSecurityTypes(for network: CWNetwork) -> [Int: String] {
-    let securityTypes: [Int: String] = [
+class EncodableCWNetwork: CWNetwork, Encodable {
+    enum CodingKeys: String, CodingKey {
+        case ssid, bssid, rssiValue, noiseMeasurement
+        case channelNumber, channelWidth, channelBand
+        case securityTypes, description, isIBSS, countryCode
+    }
+    
+    let securityTypes: [Int: String]
+
+    init(network: CWNetwork) {
+        securityTypes = securityTypeMap
+            .filter { network.supportsSecurity(CWSecurity(rawValue: $0.key)!) }
+            .mapValues { $0 }
+        
+        super.init()
+        
+        let mirror = Mirror(reflecting: network)
+        for child in mirror.children {
+            if let key = child.label {
+                setValue(child.value, forKey: key)
+            }
+        }
+        
+
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    let securityTypeMap: [Int: String] = [
         CWSecurity.none.rawValue: "None",
         CWSecurity.dynamicWEP.rawValue: "Dynamic WEP",
         CWSecurity.wpaPersonal.rawValue: "WPA Personal",
@@ -17,63 +45,31 @@ func getSecurityTypes(for network: CWNetwork) -> [Int: String] {
         CWSecurity.wpa3Transition.rawValue: "WPA3 Transition"
     ]
 
-    // Filter out the security types that are supported by the network
-    let supportedSecurityTypes = securityTypes.filter { network.supportsSecurity(CWSecurity(rawValue: $0.key)!) }
-    
-    return supportedSecurityTypes
-}
-
-struct EncodableCWNetwork: Encodable {
-    
-    enum CodingKeys: String, CodingKey {
-        case ssid, bssid, rssiValue, noiseMeasurement
-        case channelNumber, channelWidth, channelBand
-        case securityTypes, description, isIBSS, countryCode
-    }
-    
-    let network: CWNetwork
-    
-    init(network: CWNetwork) {
-        self.network = network
-    }
-
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(network.ssid, forKey: .ssid)
-        try container.encode(network.bssid, forKey: .bssid)
-        try container.encode(network.rssiValue, forKey: .rssiValue)
-        try container.encode(network.noiseMeasurement, forKey: .noiseMeasurement)
-        try container.encode(network.wlanChannel?.channelNumber, forKey: .channelNumber)
-        try container.encode(network.wlanChannel?.channelBand.rawValue, forKey: .channelBand)
-        
-        // Use the generalized function instead
-        try container.encode(getSecurityTypes(for: network), forKey: .securityTypes)
-        
-        // Encode other properties
-        try container.encode(network.ibss, forKey: .isIBSS)
-        try container.encode(network.countryCode, forKey: .countryCode)
+        try container.encode(ssid, forKey: .ssid)
+        try container.encode(bssid, forKey: .bssid)
+        try container.encode(rssiValue, forKey: .rssiValue)
+        try container.encode(noiseMeasurement, forKey: .noiseMeasurement)
+        try container.encode(wlanChannel?.channelNumber, forKey: .channelNumber)
+        try container.encode(wlanChannel?.channelBand.rawValue, forKey: .channelBand)
+        try container.encode(securityTypes, forKey: .securityTypes)
+        try container.encode(ibss, forKey: .isIBSS)
+        try container.encode(countryCode, forKey: .countryCode)
     }
 }
 
-// Rest of your code remains the same
-struct EncodableNetworkArray: Encodable {
-    let networks: [EncodableCWNetwork]
-    init (networks: [EncodableCWNetwork]) {
-        self.networks = networks
-    }
-}
 
-struct WifiItem {
+struct WifiProvider {
     // Update the non-JSON formatting to use the general function too
-    func getScanResults(asJSON: Bool) -> String {
+    func parseScanResults(asJSON: Bool) -> String {
         let results = scan() ?? []
-        let networkArray = results.map(EncodableCWNetwork.init)
         
         if asJSON {
             do {
                 let encoder = JSONEncoder()
                 encoder.outputFormatting = [.prettyPrinted]
-                let jsonResults = try encoder.encode(networkArray)
+                let jsonResults = try encoder.encode(results)
                 return String(data: jsonResults, encoding: .utf8) ?? ""
             } catch {
                 return "Error encoding to JSON: \(error)"
@@ -81,8 +77,8 @@ struct WifiItem {
         } else {
             // Add non-JSON output format
             var output = ""
-            for encodableNetwork in networkArray {
-                let network = encodableNetwork.network
+            for network in results {
+    
                 output += "\nSSID:           \(network.ssid ?? "Unknown") \n"
                 output += "BSSID:          \(network.bssid ?? "Unknown") \n"
                 output += "RSSI:           \(network.rssiValue) dBm \n"
@@ -96,7 +92,7 @@ struct WifiItem {
                 
                 output += "Security:       "
                 var securityTypeOut: [String] = Array()
-                for securityType in getSecurityTypes(for: network) {
+                for securityType in network.securityTypes {
                     securityTypeOut.append(
                         "\(securityType.value) (\(securityType.key))")
                 }
@@ -118,14 +114,18 @@ struct WifiItem {
     }
     
     // scan function remains the same
-    func scan() -> [CWNetwork]? {
+        func scan() -> [EncodableCWNetwork]? {
+            
+        
         guard let iface = CWWiFiClient.shared().interface() else {
             print("no interface")
             return nil
         }
         do {
             let networks = try iface.scanForNetworks(withName: nil, includeHidden: true)
-            return networks.sorted {
+            return networks.map{
+                EncodableCWNetwork.init(network: $0)
+            }.sorted {
                 ($0.ssid ?? "") < ($1.ssid ?? "")
             }
         } catch {

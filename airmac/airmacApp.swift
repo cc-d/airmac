@@ -11,7 +11,7 @@ import Foundation
 struct AirMacTool {
     
     static func main() {
-        let wifi: WifiItem = WifiItem()
+        let wifi: WifiProvider = WifiProvider()
         let arguments = CommandLine.arguments
         
         // Handle help flag
@@ -23,7 +23,7 @@ struct AirMacTool {
         // Process command-line arguments
         let useJSON = arguments.contains("-j") || arguments.contains("--json")
         
-        let results = wifi.getScanResults(asJSON: useJSON)
+        let results = wifi.parseScanResults(asJSON: useJSON)
         print(results)
     
     
