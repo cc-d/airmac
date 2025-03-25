@@ -1,13 +1,22 @@
 import Foundation
 import CoreWLAN
 
-class EncodableCWNetwork: Encodable {
-    enum CodingKeys: String, CodingKey {
-        case ssid, bssid, rssiValue, noiseMeasurement
-        case channelNumber, channelWidth, channelBand
-        case securityTypes, description, isIBSS, countryCode
-    }
-    
+let securityTypeMap: [Int: String] = [
+    CWSecurity.none.rawValue: "None",
+    CWSecurity.dynamicWEP.rawValue: "Dynamic WEP",
+    CWSecurity.wpaPersonal.rawValue: "WPA Personal",
+    CWSecurity.wpaPersonalMixed.rawValue: "WPA Personal Mixed",
+    CWSecurity.wpaEnterprise.rawValue: "WPA Enterprise",
+    CWSecurity.wpaEnterpriseMixed.rawValue: "WPA Enterprise Mixed",
+    CWSecurity.wpa2Personal.rawValue: "WPA2 Personal",
+    CWSecurity.wpa2Enterprise.rawValue: "WPA2 Enterprise",
+    CWSecurity.wpa3Personal.rawValue: "WPA3 Personal",
+    CWSecurity.wpa3Enterprise.rawValue: "WPA3 Enterprise",
+    CWSecurity.wpa3Transition.rawValue: "WPA3 Transition"
+]
+
+class EncodableCWNetwork: Codable {
+
     let securityTypes: [Int: String]
     let ssid: String?
     let bssid: String?
@@ -35,24 +44,6 @@ class EncodableCWNetwork: Encodable {
         self.countryCode = network.countryCode
 
     }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-    
-    let securityTypeMap: [Int: String] = [
-        CWSecurity.none.rawValue: "None",
-        CWSecurity.dynamicWEP.rawValue: "Dynamic WEP",
-        CWSecurity.wpaPersonal.rawValue: "WPA Personal",
-        CWSecurity.wpaPersonalMixed.rawValue: "WPA Personal Mixed",
-        CWSecurity.wpaEnterprise.rawValue: "WPA Enterprise",
-        CWSecurity.wpaEnterpriseMixed.rawValue: "WPA Enterprise Mixed",
-        CWSecurity.wpa2Personal.rawValue: "WPA2 Personal",
-        CWSecurity.wpa2Enterprise.rawValue: "WPA2 Enterprise",
-        CWSecurity.wpa3Personal.rawValue: "WPA3 Personal",
-        CWSecurity.wpa3Enterprise.rawValue: "WPA3 Enterprise",
-        CWSecurity.wpa3Transition.rawValue: "WPA3 Transition"
-    ]
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
